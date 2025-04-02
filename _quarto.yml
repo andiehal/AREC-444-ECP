@@ -1,0 +1,8 @@
+project:
+  title: AREC 444 - PJM Energy Consulting Project
+  output-dir: docs
+  type: website
+
+format:
+  html:
+    self-contained: true

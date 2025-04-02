@@ -1,0 +1,19 @@
+---
+title: AREC 444 - PJM Energy Consulting Project 
+author: Isa Naschold & Andie Hall
+format: html
+execute:
+  echo: true
+---
+
+### Library Code
+```{r}
+library(tidyverse)
+library(tidymodels)
+```
+
+### Cleaning Up Data
+```{r}
+
+```
+
