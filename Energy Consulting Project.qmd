@@ -10,10 +10,101 @@ execute:
 ```{r}
 library(tidyverse)
 library(tidymodels)
+library(readr)
 ```
 
-### Cleaning Up Data
+### Importing Data
 ```{r}
+gen_by_fuel <- read_csv("data/gen_by_fuel.csv")
+
+wholesale_hourly_prices <- read_csv("data/rt_hrl_lmps.csv")
+```
+
+### Cleaning Data
+```{r}
+wholesale_hourly_prices <- wholesale_hourly_prices |>
+  select(datetime_beginning_ept, pnode_name, system_energy_price_rt, total_lmp_rt, congestion_price_rt, marginal_loss_price_rt) |>
+  mutate(datetime_beginning_ept = as.character(datetime_beginning_ept)) |>
+  separate(datetime_beginning_ept, into = c("Date", "Time"), sep = " (?=[0-9]+:[0-9]+:[0-9]+)", extra = "merge")
+  
+wholesale_hourly_prices <- wholesale_hourly_prices |>
+  mutate(Time_24 = format(strptime(Time, "%I:%M:%S %p"), "%H:%M:%S")) |>
+  mutate(Hour = hour(strptime(Time, "%I:%M:%S %p")) + minute(strptime(Time, "%I:%M:%S %p")) / 60) 
+
+wholesale_hourly_prices$Date <- as.Date(wholesale_hourly_prices$Date, format = "%m/%d/%Y")
+
+wholesale_hourly_prices <- wholesale_hourly_prices |>
+  mutate(
+    Date = as.Date(Date),  # Ensure Date is in proper format
+    Season = case_when(
+      month(Date) %in% c(12, 1, 2) ~ "Winter (December - February)",
+      month(Date) %in% c(3, 4, 5)  ~ "Spring (March - May)",
+      month(Date) %in% c(6, 7, 8)  ~ "Summer (June - August)",
+      month(Date) %in% c(9, 10, 11) ~ "Fall (September - November)",
+      TRUE ~ NA_character_  # Default case (shouldn't be needed)
+    )
+  )
+
+gen_by_fuel$Date <- as.Date(gen_by_fuel$Date, format = "%m/%d/%Y")
+
+gen_by_fuel <- gen_by_fuel |>
+  mutate(
+    Date = as.Date(Date),  # Ensure Date is in proper format
+    Season = case_when(
+      month(Date) %in% c(12, 1, 2) ~ "Winter (December - February)",
+      month(Date) %in% c(3, 4, 5)  ~ "Spring (March - May)",
+      month(Date) %in% c(6, 7, 8)  ~ "Summer (June - August)",
+      month(Date) %in% c(9, 10, 11) ~ "Fall (September - November)",
+      TRUE ~ NA_character_  # Default case (shouldn't be needed)
+    )
+  )
+
+gen_by_fuel <- gen_by_fuel |>
+  select(datetime_beginning_ept, fuel_type, mw, fuel_percentage_of_total, is_renewable) |>
+  mutate(datetime_beginning_ept = as.character(datetime_beginning_ept)) |>
+  separate(datetime_beginning_ept, into = c("Date", "Time"), sep = " (?=[0-9]+:[0-9]+:[0-9]+)", extra = "merge")
+
+gen_by_fuel <- gen_by_fuel |>
+  mutate(Time_24 = format(strptime(Time, "%I:%M:%S %p"), "%H:%M:%S")) |>
+  mutate(Hour = hour(strptime(Time, "%I:%M:%S %p")) + minute(strptime(Time, "%I:%M:%S %p")) / 60)
+
+```
+
+### Understanding the Prices throughout the day
+```{r}
+
+reasonable_wholesale_hourly_prices <- wholesale_hourly_prices |>
+  filter(system_energy_price_rt < 150 & system_energy_price_rt > 0)
+
+ggplot(reasonable_wholesale_hourly_prices, aes(x = Hour, y = system_energy_price_rt, color = Season)) +
+  geom_point() +
+  labs(title = "System Energy Prices by 24-Hour Day Scatterplot for PJM Energy (2024)", x = "Hours (24 hour day)", y = "System Energy Prices") +
+  theme_minimal() +
+  facet_wrap(~Season)
+
+```
+### Amount of Generation by Type
+```{r}
+january_2024_report <- gen_by_fuel |>
+  filter(month(Date) == 1) |> 
+  group_by(Date)
+
+ggplot(gen_by_fuel, aes(x = Hour, y = mw, color = fuel_type)) +
+  geom_point() +
+  labs(title = "Generation (MW) Production by Fuel Type throughout the Day for PJM (2024)", x = "Hour (24 Hour Day)", y = "Generation (MW)") +
+  theme_minimal() +
+  facet_wrap(~Season)
+
+```
+
+### Seeing by Renewable Status
+```{r}
+
+ggplot(gen_by_fuel, aes(x = Hour, y = mw, color = is_renewable)) +
+  geom_point() +
+  labs(title = "Generation (MW) Production by Fuel Renewability Type throughout the Day for PJM (2024)", x = "Hour (24 Hour Day)", y = "Generation (MW)") +
+  theme_minimal() +
+  facet_wrap(~Season)
 
 ```
 
